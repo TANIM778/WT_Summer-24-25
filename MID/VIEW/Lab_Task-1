@@ -14,23 +14,22 @@
             </td>
             <td> 
             <input type = "text">
-            </td>
-        </td> 
+            </td> 
         </tr>
         <tr>
            <td> 
             Email:
+            </td>
             <td>
             <input type = "text">
-            </td>
-        </td> 
+            </td> 
         </tr>
         <tr>
             <td>
                 Password: 
             </td>
             <td>
-                <input type = "text">
+                <input type = "password">
             </td>
         </tr>
         <tr>
@@ -58,9 +57,9 @@
             </td>
             <td>
             <select>
-                <option value="">--Select--
-                <option value="">--Bangladesh
-                <option value="">--America
+                <option value="">--Select--</option>
+                <option value="">--Bangladesh</option>
+                <option value="">--America</option>
             </select>
             </td>
         </tr>
@@ -89,8 +88,9 @@
             </td>
         </tr>
         <tr>
+            <td></td>
             <td>
-                < type = 'submit'>
+                <input type="submit" value="Register">
             </td>
         </tr>
     </table>
