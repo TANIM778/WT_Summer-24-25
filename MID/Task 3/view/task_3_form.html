@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<head>
+    <link rel ="stylesheet" href = "../css/task_3_style.css">
+    <script src = "../js/task_3_valid.js"></script>
+</head>
+<body>
+ <form >
+        <fieldset>
+            <h2>Donor Information</h2>
+            <p>
+                <label for="fname">First Name</label><br>
+                <input type="text" id="fname" name="fname" size="50">
+            </p>
+
+            <p>
+                <label for="lname">Last Name</label><br>
+                <input type="text" id="lname" name="lname" size="50">
+            </p>
+
+            <p>
+                <label for="address">Address</label><br>
+                <input type="text" id="address" name="address" size="50">
+            </p>
+ 
+            <p>
+                <label for="city">City</label><br>
+                <input type="text" id="city" name="city" size="50">
+            </p>
+ 
+            <p>
+                <label for="state">State</label><br>
+                <select id="state" name="state">
+                    <option value="">Select a State</option>
+                    <option value="Dhaka">Dhaka</option>
+                    <option value="Sylhet">Sylhet</option>
+                    <option value="Khulna">Khulna</option>
+                </select>
+            </p>
+ 
+            <p>
+                <label for="phone">Phone</label><br>
+                <input type="number" id="phone" name="phone" size="50">
+            </p>
+ 
+            <p>
+                <label for="email">Email</label><br>
+                <input type="email" id="email" name="email" size="50">
+            </p>
+ 
+            <p>
+                <label for="password">Create Password (min 8 characters)</label><br>
+                <input type="password" id="password" name="password" minlength="8" size="50">
+            </p>
+ 
+            <p>
+                <label for="cpassword">Confirm Password</label><br>
+                <input type="password" id="cpassword" name="cpassword" size="50">
+            </p>
+ 
+            <p>
+                <strong>Donation Amount</strong><br>
+                <input type="radio" id="donation-none" name="donation-amount" value="none" >
+                <label for="donation-none">None</label>
+                <input type="radio" id="donation-500" name="donation-amount" value="500">
+                <label for="donation-500">500 BDT</label>
+                <input type="radio" id="donation-1000" name="donation-amount" value="1000">
+                <label for="donation-1000">1000 BDT</label>
+                <input type="radio" id="donation-2000" name="donation-amount" value="2000">
+                <label for="donation-2000">2000 BDT</label>
+                <input type="radio" id="donation-3000" name="donation-amount" value="3000">
+                <label for="donation-3000">3000 BDT</label>
+                <input type="radio" id="donation-other" name="donation-amount" value="other">
+                <label for="donation-other">Other</label>
+            </p>
+ 
+            <p>
+                <label for="other-amount">Other Amount</label><br>
+                <input type="text" id="other-amount" name="other-amount" size="50">
+            </p>
+ 
+            <p>
+                <input type="checkbox" id="regular-basis" name="regular-basis">
+                <label for="regular-basis">I am interested in giving on a regular basis.</label>
+            </p>
+        </fieldset>
+        <fieldset>
+            <h2>Additional Information</h2>
+            <p>
+                <input type="checkbox" id="anonymous" name="anonymous">
+                <label for="anonymous">I would like my gift to remain anonymous.</label>
+            </p>
+ 
+            <p>
+                <input type="checkbox" id="matching-gift" name="matching-gift">
+                <label for="matching-gift">My employer offers a matching gift program.</label>
+            </p>
+ 
+            <p>
+                <input type="checkbox" id="no-thank-you" name="no-thank-you">
+                <label for="no-thank-you">Please don't send a thank you letter.</label>
+            </p>
+ 
+            <p>
+                <label for="comments">Comments</label><br>
+                <textarea id="comments" name="comments" rows="4" cols="50"></textarea>
+            </p>
+        </fieldset>
+
+        <p>
+            <button type="reset">Reset</button>
+            <button type="submit">Submit</button>
+        </p>
+    </form>
+</body>
+</html>
