@@ -139,7 +139,7 @@ function approveRejectLoan($loan_id, $status) {
 
 function getPendingFixedDeposits() {
     global $conn;
-    return mysqli_query($conn, "SELECT id, status WHERE status = 'pending' ORDER BY id");
+    return mysqli_query($conn, "SELECT id, status FROM fixed_deposits WHERE status = 'pending' ORDER BY id");
 }
 
 function manageFD($fd_id, $action) {
