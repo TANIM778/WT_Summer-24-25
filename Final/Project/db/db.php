@@ -1,128 +1,208 @@
 <?php
-$host = "localhost";
-$user = "root";
-$pass = "";
-$dbname = "project";
+$host = getenv('DB_HOST') ?: 'localhost';
+$user = getenv('DB_USER') ?: 'root';
+$pass = getenv('DB_PASS') ?: '';
+$dbname = getenv('DB_NAME') ?: 'project';
 
 $conn = mysqli_connect($host, $user, $pass, $dbname);
-
 if (!$conn) {
-    die("Connection Failed: " . mysqli_connect_error());
+    http_response_code(500);
+    exit('Database connection failed.');
+}
+mysqli_set_charset($conn, 'utf8mb4');
+
+/** Prepare and execute a parameterized statement. */
+function execute_prepared($sql, $types = '', $values = []) {
+    global $conn;
+    $stmt = mysqli_prepare($conn, $sql);
+    if (!$stmt) return false;
+
+    if ($types !== '') {
+        $args = array_merge([$stmt, $types], $values);
+        $refs = [];
+        foreach ($args as $key => $value) $refs[$key] = &$args[$key];
+        if (!call_user_func_array('mysqli_stmt_bind_param', $refs)) {
+            mysqli_stmt_close($stmt);
+            return false;
+        }
+    }
+    if (!mysqli_stmt_execute($stmt)) {
+        mysqli_stmt_close($stmt);
+        return false;
+    }
+    return $stmt;
 }
 
-// ---------------- Customer & Employee Inserts ----------------
+function close_statement($stmt) {
+    if ($stmt instanceof mysqli_stmt) mysqli_stmt_close($stmt);
+}
+
 function insert_customer($data) {
-    global $conn;
-    $sql = "INSERT INTO customer 
-        (fname, uname, email, password, phone, gender, address, account_type, nid) 
-        VALUES 
-        ('{$data['fname']}', '{$data['uname']}', '{$data['email']}', '{$data['password']}', 
-         '{$data['phone']}', '{$data['gender']}', '{$data['address']}', '{$data['account_type']}', '{$data['nid']}')";
-    return mysqli_query($conn, $sql);
+    $stmt = execute_prepared(
+        'INSERT INTO customer (fname, uname, email, password, phone, gender, address, account_type, nid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        'sssssssss',
+        [$data['fname'], $data['uname'], $data['email'], $data['password'], $data['phone'], $data['gender'], $data['address'], $data['account_type'], $data['nid']]
+    );
+    if (!$stmt) return false;
+    close_statement($stmt);
+    return true;
 }
 
 function insert_employee($data) {
-    global $conn;
-    $sql = "INSERT INTO employee 
-        (fname, uname, email, password, phone, gender, department) 
-        VALUES 
-        ('{$data['fname']}', '{$data['uname']}', '{$data['email']}', '{$data['password']}', 
-         '{$data['phone']}', '{$data['gender']}', '{$data['department']}')";
-    return mysqli_query($conn, $sql);
+    $stmt = execute_prepared(
+        'INSERT INTO employee (fname, uname, email, password, phone, gender, department) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        'sssssss',
+        [$data['fname'], $data['uname'], $data['email'], $data['password'], $data['phone'], $data['gender'], $data['department']]
+    );
+    if (!$stmt) return false;
+    close_statement($stmt);
+    return true;
 }
 
-// ---------------- Fetching Customers & Employees ----------------
-function get_all_customers() {
-    global $conn;
-    $sql = "SELECT * FROM customer";
-    return mysqli_query($conn, $sql);
+function get_user_by_role($role, $uname) {
+    $tables = ['customer' => 'customer', 'employee' => 'employee'];
+    if (!isset($tables[$role])) return false;
+    $table = $tables[$role];
+    $stmt = execute_prepared("SELECT id, fname, uname, password FROM $table WHERE uname = ? LIMIT 1", 's', [$uname]);
+    if (!$stmt) return false;
+    $result = mysqli_stmt_get_result($stmt);
+    $user = $result ? mysqli_fetch_assoc($result) : false;
+    close_statement($stmt);
+    return $user;
 }
 
-function get_all_employees() {
-    global $conn;
-    $sql = "SELECT * FROM employee";
-    return mysqli_query($conn, $sql);
+function update_user_password($role, $user_id, $password_hash) {
+    $tables = ['customer' => 'customer', 'employee' => 'employee'];
+    if (!isset($tables[$role])) return false;
+    $table = $tables[$role];
+    $stmt = execute_prepared("UPDATE $table SET password = ? WHERE id = ?", 'si', [$password_hash, $user_id]);
+    if (!$stmt) return false;
+    close_statement($stmt);
+    return true;
 }
 
-// ---------------- Account Management ----------------
+function username_exists($uname) {
+    foreach (['customer', 'employee'] as $table) {
+        $stmt = execute_prepared("SELECT id FROM $table WHERE uname = ? LIMIT 1", 's', [$uname]);
+        if (!$stmt) return true;
+        $result = mysqli_stmt_get_result($stmt);
+        $exists = $result && mysqli_num_rows($result) > 0;
+        close_statement($stmt);
+        if ($exists) return true;
+    }
+    return false;
+}
+
 function getPendingAccounts() {
     global $conn;
-    $sql = "SELECT * FROM accounts WHERE status='pending'";
-    return mysqli_query($conn, $sql);
+    return mysqli_query($conn, "SELECT id, user_id, account_type FROM accounts WHERE status = 'pending' ORDER BY id");
 }
 
 function approveRejectAccount($account_id, $status) {
-    global $conn;
-    $sql = "UPDATE accounts SET status='$status' WHERE id='$account_id'";
-    return mysqli_query($conn, $sql);
+    if (!in_array($status, ['approved', 'rejected'], true)) return false;
+    $stmt = execute_prepared('UPDATE accounts SET status = ? WHERE id = ?', 'si', [$status, $account_id]);
+    if (!$stmt) return false;
+    close_statement($stmt);
+    return true;
 }
 
 function getLoanApplications() {
     global $conn;
-    $sql = "SELECT * FROM loans WHERE status='under_review'";
-    return mysqli_query($conn, $sql);
+    return mysqli_query($conn, "SELECT * FROM loans WHERE status = 'under_review' ORDER BY id");
+}
+
+function applyLoan($user_id, $loan_type, $amount, $duration) {
+    $stmt = execute_prepared(
+        "INSERT INTO loans (user_id, loan_type, amount, duration, status) VALUES (?, ?, ?, ?, 'under_review')",
+        'isdi',
+        [$user_id, $loan_type, $amount, $duration]
+    );
+    if (!$stmt) return false;
+    close_statement($stmt);
+    return true;
 }
 
 function verifyLoan($loan_id, $verified) {
-    global $conn;
-    $sql = "UPDATE loans SET verified='$verified' WHERE id='$loan_id'";
-    return mysqli_query($conn, $sql);
+    $stmt = execute_prepared('UPDATE loans SET verified = ? WHERE id = ?', 'ii', [(int) (bool) $verified, $loan_id]);
+    if (!$stmt) return false;
+    close_statement($stmt);
+    return true;
 }
 
 function approveRejectLoan($loan_id, $status) {
+    if (!in_array($status, ['approved', 'rejected'], true)) return false;
+    $stmt = execute_prepared('UPDATE loans SET status = ? WHERE id = ?', 'si', [$status, $loan_id]);
+    if (!$stmt) return false;
+    close_statement($stmt);
+    return true;
+}
+
+function getPendingFixedDeposits() {
     global $conn;
-    $sql = "UPDATE loans SET status='$status' WHERE id='$loan_id'";
-    return mysqli_query($conn, $sql);
+    return mysqli_query($conn, "SELECT id, status FROM fixed_deposits WHERE status = 'pending' ORDER BY id");
 }
 
 function manageFD($fd_id, $action) {
-    global $conn;
-    $sql = "UPDATE fixed_deposits SET status='$action' WHERE id='$fd_id'";
-    return mysqli_query($conn, $sql);
+    if (!in_array($action, ['approved', 'rejected'], true)) return false;
+    $stmt = execute_prepared('UPDATE fixed_deposits SET status = ? WHERE id = ?', 'si', [$action, $fd_id]);
+    if (!$stmt) return false;
+    close_statement($stmt);
+    return true;
 }
 
-function closeAccount($account_id) {
-    global $conn;
-    $sql = "UPDATE accounts SET status='closed' WHERE id='$account_id'";
-    return mysqli_query($conn, $sql);
+function closeAccount($account_id, $user_id) {
+    $stmt = execute_prepared("UPDATE accounts SET status = 'closed' WHERE id = ? AND user_id = ? AND status IN ('pending', 'approved')", 'ii', [$account_id, $user_id]);
+    if (!$stmt) return false;
+    $changed = mysqli_stmt_affected_rows($stmt) === 1;
+    close_statement($stmt);
+    return $changed;
 }
 
 function getCustomerHistory($customer_id) {
-    global $conn;
     $data = [];
-    $data['accounts'] = mysqli_query($conn, "SELECT * FROM accounts WHERE user_id='$customer_id'");
-    $data['transactions'] = mysqli_query($conn, "SELECT * FROM transactions WHERE user_id='$customer_id'");
-    $data['loans'] = mysqli_query($conn, "SELECT * FROM loans WHERE user_id='$customer_id'");
+    foreach ([
+        'accounts' => 'SELECT * FROM accounts WHERE user_id = ?',
+        'transactions' => 'SELECT * FROM transactions WHERE user_id = ?',
+        'loans' => 'SELECT * FROM loans WHERE user_id = ?'
+    ] as $key => $sql) {
+        $stmt = execute_prepared($sql, 'i', [$customer_id]);
+        $data[$key] = $stmt ? mysqli_stmt_get_result($stmt) : false;
+        close_statement($stmt);
+    }
     return $data;
 }
 
+function getCustomerAccounts($customer_id) {
+    $stmt = execute_prepared('SELECT id, account_type, status FROM accounts WHERE user_id = ? ORDER BY id', 'i', [$customer_id]);
+    if (!$stmt) return false;
+    $result = mysqli_stmt_get_result($stmt);
+    close_statement($stmt);
+    return $result;
+}
+
 function setTransactionLimit($account_id, $limit) {
-    global $conn;
-    $sql = "UPDATE accounts SET transaction_limit='$limit' WHERE id='$account_id'";
-    return mysqli_query($conn, $sql);
+    $stmt = execute_prepared('UPDATE accounts SET transaction_limit = ? WHERE id = ?', 'di', [$limit, $account_id]);
+    if (!$stmt) return false;
+    close_statement($stmt);
+    return true;
 }
 
 function lockDebitCard($account_id, $status) {
-    global $conn;
-    $sql = "UPDATE accounts SET card_locked='$status' WHERE id='$account_id'";
-    return mysqli_query($conn, $sql);
+    $stmt = execute_prepared('UPDATE accounts SET card_locked = ? WHERE id = ?', 'ii', [(int) (bool) $status, $account_id]);
+    if (!$stmt) return false;
+    close_statement($stmt);
+    return true;
 }
 
 function openAccount($user_id, $account_type, $initial_deposit) {
-    global $conn;
-    $sql = "INSERT INTO accounts (user_id, account_type, balance, status) 
-            VALUES ('$user_id', '$account_type', '$initial_deposit', 'pending')";
-
-    if (mysqli_query($conn, $sql)) {
-        return true;
-    } else {
-        return "Database error: " . mysqli_error($conn);
-    }
+    $stmt = execute_prepared("INSERT INTO accounts (user_id, account_type, balance, status) VALUES (?, ?, ?, 'pending')", 'isd', [$user_id, $account_type, $initial_deposit]);
+    if (!$stmt) return false;
+    close_statement($stmt);
+    return true;
 }
 
-// ---------------- Close Connection ----------------
 function close_connection() {
     global $conn;
-    mysqli_close($conn);
+    if ($conn instanceof mysqli) mysqli_close($conn);
 }
 ?>
