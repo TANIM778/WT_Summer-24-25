@@ -139,7 +139,7 @@ function approveRejectLoan($loan_id, $status) {
 
 function getPendingFixedDeposits() {
     global $conn;
-    return mysqli_query($conn, "SELECT id, user_id, status FROM fixed_deposits WHERE status = 'pending' ORDER BY id");
+    return mysqli_query($conn, "SELECT id, status WHERE status = 'pending' ORDER BY id");
 }
 
 function manageFD($fd_id, $action) {
@@ -188,7 +188,7 @@ function setTransactionLimit($account_id, $limit) {
 }
 
 function lockDebitCard($account_id, $status) {
-    $stmt = execute_prepared('UPDATE accounts SET card_locked = ? WHERE id = ?', 'ii', [$account_id ? (int) (bool) $status : 0, $account_id]);
+    $stmt = execute_prepared('UPDATE accounts SET card_locked = ? WHERE id = ?', 'ii', [(int) (bool) $status, $account_id]);
     if (!$stmt) return false;
     close_statement($stmt);
     return true;

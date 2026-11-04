@@ -17,9 +17,9 @@ $deposits = getPendingFixedDeposits();
 <?php elseif (mysqli_num_rows($deposits) === 0): ?>
 <p>No pending fixed-deposit requests.</p>
 <?php else: ?>
-<table border="1"><tr><th>ID</th><th>Customer ID</th><th>Action</th></tr>
+<table border="1"><tr><th>ID</th><th>Action</th></tr>
 <?php while ($deposit = mysqli_fetch_assoc($deposits)): ?>
-<tr><td><?= (int) $deposit['id'] ?></td><td><?= (int) $deposit['user_id'] ?></td><td>
+<tr><td><?= (int) $deposit['id'] ?></td><td>
 <form method="post" action="../php/manage_fd_valid.php"><input type="hidden" name="fd_id" value="<?= (int) $deposit['id'] ?>"><button name="action" value="approved">Approve</button><button name="action" value="rejected">Reject</button></form>
 </td></tr>
 <?php endwhile; ?>
